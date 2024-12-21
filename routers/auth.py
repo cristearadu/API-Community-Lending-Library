@@ -40,6 +40,7 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    import pdb; pdb.set_trace()
     db_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
     if db_user:
         raise HTTPException(

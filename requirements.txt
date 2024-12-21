@@ -1,7 +1,9 @@
-fastapi
+fastapi~=0.115.4
 uvicorn
-sqlalchemy
-pydantic
+sqlalchemy~=2.0.36
+pydantic~=2.9.2
 python-jose
-passlib[bcrypt]
+passlib[bcrypt]~=1.7.4
 pydantic[email]
+
+requests~=2.32.3
