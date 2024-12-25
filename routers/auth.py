@@ -40,15 +40,7 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    import pdb; pdb.set_trace()
-    db_user = db.query(User).filter((User.username == user.username) | (User.email == user.email)).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username or email already registered"
-        )
-
-    hashed_password = pwd_context.hash(user.password)
+    hashed_password = pwd_context.hash(user.password.get_secret_value())
 
     db_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
     db.add(db_user)
