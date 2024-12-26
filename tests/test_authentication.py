@@ -42,6 +42,8 @@ STATUS_CODE_BAD_REQUEST = 400
 STATUS_CODE_SUCCESS = 200
 
 DETAILS = {
+    "USERNAME_ALREADY_EXISTS": "Username already registered",
+    "EMAIL_ALREADY_EXISTS": "Email already registered",
     "USERNAME_TOO_SHORT": "Username must be between 3 and 30 characters",
     "USERNAME_TOO_LONG": "Username must be between 3 and 30 characters",
     "USERNAME_INVALID_CHARACTERS": "Username can only contain letters, numbers, and underscores",
@@ -80,7 +82,7 @@ class TestRegisterEndpoint:
 
     def test_register_username_too_short(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["username"] = "1"  # Invalid username
+        user_data["username"] = "1"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -91,7 +93,7 @@ class TestRegisterEndpoint:
 
     def test_register_username_too_long(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["username"] = "a" * 31  # Invalid username
+        user_data["username"] = "a" * 31
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -102,7 +104,7 @@ class TestRegisterEndpoint:
 
     def test_register_username_invalid_characters(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["username"] = "invalid@name"  # Invalid username
+        user_data["username"] = "invalid@name"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -113,7 +115,7 @@ class TestRegisterEndpoint:
 
     def test_register_email_invalid_format(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["email"] = "invalid-email"  # Invalid email
+        user_data["email"] = "invalid-email"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -124,7 +126,7 @@ class TestRegisterEndpoint:
 
     def test_register_password_too_short(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["password"] = "Short1!"  # Invalid password
+        user_data["password"] = "Short1!"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -135,7 +137,7 @@ class TestRegisterEndpoint:
 
     def test_register_password_missing_uppercase(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["password"] = "lowercase1!"  # Invalid password
+        user_data["password"] = "lowercase1!"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -146,7 +148,7 @@ class TestRegisterEndpoint:
 
     def test_register_password_missing_lowercase(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["password"] = "UPPERCASE1!"  # Invalid password
+        user_data["password"] = "UPPERCASE1!"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -157,7 +159,7 @@ class TestRegisterEndpoint:
 
     def test_register_password_missing_digit(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["password"] = "NoDigit!"  # Invalid password
+        user_data["password"] = "NoDigit!"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -168,7 +170,7 @@ class TestRegisterEndpoint:
 
     def test_register_password_missing_special_character(self, controller, valid_headers, generate_unique_user):
         user_data = generate_unique_user()
-        user_data["password"] = "ValidPass1"  # Invalid password
+        user_data["password"] = "ValidPass1"
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -178,7 +180,7 @@ class TestRegisterEndpoint:
         assert response.json()["detail"] == DETAILS["PASSWORD_MISSING_SPECIAL"]
 
     def test_register_success(self, controller, valid_headers, generate_unique_user):
-        user_data = generate_unique_user()  # Unique user
+        user_data = generate_unique_user()
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
@@ -187,3 +189,41 @@ class TestRegisterEndpoint:
         assert response.status_code == STATUS_CODE_SUCCESS
         assert response.json()["username"] == user_data["username"]
         assert response.json()["email"] == user_data["email"]
+
+    def test_register_duplicate_username(self, controller, valid_headers, generate_unique_user):
+        user_data = generate_unique_user()
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data
+        )
+        assert response.status_code == STATUS_CODE_SUCCESS
+
+        duplicate_user = generate_unique_user()
+        duplicate_user["username"] = user_data["username"]
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=duplicate_user
+        )
+        assert response.status_code == STATUS_CODE_BAD_REQUEST
+        assert response.json()["detail"] == "Username already registered"
+
+    def test_register_duplicate_email(self, controller, valid_headers, generate_unique_user):
+        user_data = generate_unique_user()
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data
+        )
+        assert response.status_code == STATUS_CODE_SUCCESS
+
+        duplicate_user = generate_unique_user()
+        duplicate_user["email"] = user_data["email"]
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=duplicate_user
+        )
+        assert response.status_code == STATUS_CODE_BAD_REQUEST
+        assert response.json()["detail"] == "Email already registered"

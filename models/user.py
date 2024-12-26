@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String
+import uuid
+
+from sqlalchemy import Column, Text, String
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -6,10 +8,10 @@ from database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    hashed_password = Column(Text, nullable=False)  # Use Text for potentially long
+    
     # Define the relationship with the Item model
     items = relationship("Item", back_populates="owner")

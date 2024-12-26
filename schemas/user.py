@@ -1,9 +1,7 @@
-from pydantic import BaseModel, Field, SecretStr, EmailStr, field_validator, ValidationError
-from sqlalchemy.orm import Session
-from models.user import User
-from database import get_db
 import re
-from typing import ClassVar
+from uuid import UUID
+from pydantic import BaseModel, Field, SecretStr, EmailStr, field_validator, model_validator, ValidationError
+from models.user import User
 from fastapi import HTTPException, status
 
 
@@ -12,8 +10,9 @@ class UserCreate(BaseModel):
     email: str = Field(..., example="john_doe@example.com")
     password: SecretStr = Field(..., example="SecurePass1!")
 
-    # Database session to be used for uniqueness checks
-    db_session: ClassVar[Session] = None  # This will be set before validation in the endpoint
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
 
     @field_validator("username")
     def validate_username(cls, username):
@@ -30,15 +29,6 @@ class UserCreate(BaseModel):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username can only contain letters, numbers, and underscores"
             )
-
-        # Database uniqueness check for username
-        if cls.db_session:
-            existing_user = cls.query(User).filter((User.username == username)).first()
-            if existing_user:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Username or email already registered"
-                )
         return username
 
     @field_validator("email")
@@ -50,17 +40,30 @@ class UserCreate(BaseModel):
                 status_code=400,
                 detail="Invalid email address"
             )
-
-        # Database uniqueness check for email
-        if cls.db_session:
-            existing_user = cls.query(User).filter((User.username == email)).first()
-            if existing_user:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Email already registered"
-                )
-
         return email
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_unique_fields(cls, data):
+        db = data.get('db_session')
+        if not db:
+            return data
+            
+        username = data.get('username')
+        email = data.get('email')
+        
+        if username and db.query(User).filter(User.username == username).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered"
+            )
+            
+        if email and db.query(User).filter(User.email == email).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        return data
 
     @field_validator("password")
     def validate_password(cls, password: SecretStr):
@@ -105,7 +108,7 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
+    id: UUID
     username: str
     email: str
 

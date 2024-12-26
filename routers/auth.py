@@ -39,12 +39,18 @@ def login(username: str, password: str, db: Session = Depends(get_db)):
 
 
 @router.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    hashed_password = pwd_context.hash(user.password.get_secret_value())
-
-    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    data_dict = user_data.model_dump()
+    data_dict['db_session'] = db
+    user_create = UserCreate(**data_dict)
+    
+    hashed_password = pwd_context.hash(user_create.password.get_secret_value())
+    db_user = User(
+        username=user_create.username,
+        email=user_create.email,
+        hashed_password=hashed_password
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
-
     return db_user
