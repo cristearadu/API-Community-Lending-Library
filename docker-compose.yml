@@ -1,0 +1,10 @@
+services:
+  api:
+    container_name: api-test
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./database:/app/database
+    environment:
+      - PYTHONPATH=/app 
