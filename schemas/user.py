@@ -10,13 +10,20 @@ from pydantic import (
     ValidationError,
 )
 from models.user import User
+from models.roles import UserRole
 from fastapi import HTTPException, status
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 class UserCreate(BaseModel):
     username: str = Field(..., example="john_doe")
     email: str = Field(..., example="john_doe@example.com")
     password: SecretStr = Field(..., example="SecurePass1!")
+    role: UserRole = Field(default=UserRole.BUYER, example="buyer")
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -141,6 +148,7 @@ class UserResponse(BaseModel):
     id: UUID
     username: str
     email: str
+    role: UserRole
 
     class Config:
         orm_mode = True
