@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from passlib.context import CryptContext
-from utils.auth import create_access_token
+from tests.utils.auth import create_access_token
 from config import settings
 from database import get_db
 from models.user import User

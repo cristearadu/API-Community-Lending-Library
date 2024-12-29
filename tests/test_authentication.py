@@ -1,6 +1,4 @@
-import pytest
 import time
-from tests.utils import decode_token_payload, generate_random_string
 from tests.constants import (
     StatusCode,
     ErrorDetail,
@@ -8,7 +6,7 @@ from tests.constants import (
     INVALID_EMAIL_FORMATS,
 )
 from tests.controllers import AuthenticationEndpoints
-from utils.string_generators import generate_unicode_test_cases
+from tests.utils.string_generators import generate_unicode_test_cases, decode_token_payload, generate_random_string
 
 
 class TestRegisterEndpoint:

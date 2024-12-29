@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends
-from routers import auth, items
+from routers import auth
 from database import engine, Base
-from models import user, item
+from models import user
 from schemas.user import UserResponse
-from utils.auth import get_current_user
+from tests.utils.auth import get_current_user
 
 app = FastAPI()
 

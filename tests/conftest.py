@@ -1,6 +1,5 @@
 import pytest
-import uuid
-from tests.utils import generate_random_string
+from tests.utils.string_generators import generate_random_string
 from tests.constants import StatusCode
 from tests.controllers import AuthenticationController, AuthenticationEndpoints
 

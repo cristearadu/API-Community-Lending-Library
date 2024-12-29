@@ -12,6 +12,3 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     hashed_password = Column(Text, nullable=False)  # Use Text for potentially long
-
-    # Define the relationship with the Item model
-    items = relationship("Item", back_populates="owner")
