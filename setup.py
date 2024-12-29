@@ -5,19 +5,6 @@ import requests
 from requests.exceptions import ConnectionError
 
 
-def is_docker_running():
-    try:
-        subprocess.run(
-            ["docker", "info"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
-        return True
-    except subprocess.CalledProcessError:
-        return False
-
-
 def check_api_status():
     try:
         print("\n🔍 Checking API status at http://localhost:8000/docs")
@@ -32,20 +19,30 @@ def check_api_status():
         return False
 
 
-def start_docker():
-    print("\n🚀 Starting Docker containers...")
-    if not is_docker_running():
-        print("❌ Docker is not running!")
-        print("💡 Please start Docker Desktop and try again")
-        return False
-
+def rebuild_docker():
+    """Rebuild Docker containers from scratch"""
+    print("\n🔄 Rebuilding Docker environment...")
     try:
-        print("📦 Starting container...")
+        # Stop and remove existing containers
+        print("🛑 Stopping existing containers...")
+        subprocess.run(["docker", "compose", "down"], check=True)
+        
+        # Remove existing containers
+        print("🗑️  Removing old containers...")
+        subprocess.run(["docker", "compose", "rm", "-f"], check=True)
+        
+        # Build without cache
+        print("🏗️  Building fresh containers...")
+        subprocess.run(["docker", "compose", "build", "--no-cache"], check=True)
+        
+        # Start new containers
+        print("🚀 Starting new containers...")
         subprocess.run(["docker", "compose", "up", "-d"], check=True)
-        print("✅ Docker container started")
+        
+        print("✅ Docker rebuild complete!")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ Docker error: {e}")
+        print(f"❌ Docker rebuild failed: {e}")
         return False
 
 
@@ -64,20 +61,10 @@ def run_tests():
         return False
 
 
-def safe_docker_down():
-    """Safely try to stop Docker containers"""
-    if is_docker_running():
-        try:
-            subprocess.run(["docker", "compose", "down"], check=True)
-        except subprocess.CalledProcessError:
-            pass  # Ignore errors during shutdown
-
-
 if __name__ == "__main__":
     try:
-        if not start_docker():
-            print("❌ Failed to start Docker")
-            safe_docker_down()
+        if not rebuild_docker():
+            print("❌ Failed to rebuild Docker")
             sys.exit(1)
 
         print("\n⏳ Waiting 5 seconds before checking API...")
@@ -85,23 +72,28 @@ if __name__ == "__main__":
 
         if check_api_status():
             print("\n✅ API is responding!")
-
+            
             if run_tests():
                 print("\n✅ All tests passed!")
-                print("\n💡 API container will keep running.")
-                print("ℹ️  Use 'docker compose down' when you want to stop it.")
+                print("\n💡 API container is running. Showing logs:")
+                print("ℹ️  Use Ctrl+C to stop")
+                print("\n📋 Container logs:")
+                # Follow all logs for now
+                subprocess.run(["docker", "compose", "logs", "--follow"], check=True)
             else:
                 print("\n❌ Tests failed!")
                 print("\n🛑 Stopping containers due to test failure...")
-                safe_docker_down()
+                subprocess.run(["docker", "compose", "down"])
                 sys.exit(1)
         else:
             print("\n❌ API is not responding!")
             print("\n📋 Docker logs:")
-            subprocess.run(["docker", "logs", "api-test"])
+            subprocess.run(["docker", "compose", "logs"])
             print("\n🛑 Stopping containers due to API failure...")
-            safe_docker_down()
+            subprocess.run(["docker", "compose", "down"])
             sys.exit(1)
     except KeyboardInterrupt:
         print("\n🛑 Interrupted by user")
-        safe_docker_down()
+        print("🛑 Stopping containers...")
+        subprocess.run(["docker", "compose", "down"])
+        print("✅ Containers stopped")
