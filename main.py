@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, Depends
 from routers import auth, items
 from database import engine, Base

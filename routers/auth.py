@@ -25,7 +25,6 @@ def authenticate_user(db: Session, username: str, password: str):
 
 @router.post("/login")
 async def login(user_data: LoginUser, db: Session = Depends(get_db)):
-    # Attach db to LoginUser class for validation
     LoginUser.db = db
     try:
         user = authenticate_user(db, user_data.username, user_data.password)
@@ -34,28 +33,27 @@ async def login(user_data: LoginUser, db: Session = Depends(get_db)):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
             )
-        
+
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.username}, expires_delta=access_token_expires
         )
         return {"access_token": access_token, "token_type": "bearer"}
     finally:
-        # Clean up
-        delattr(LoginUser, 'db')
+        delattr(LoginUser, "db")
 
 
 @router.post("/register", response_model=UserResponse)
 async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     data_dict = user_data.model_dump()
-    data_dict['db_session'] = db
+    data_dict["db_session"] = db
     user_create = UserCreate(**data_dict)
-    
+
     hashed_password = pwd_context.hash(user_create.password.get_secret_value())
     db_user = User(
         username=user_create.username,
         email=user_create.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
     )
     db.add(db_user)
     db.commit()
