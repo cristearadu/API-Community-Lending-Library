@@ -6,7 +6,11 @@ from tests.constants import (
     INVALID_EMAIL_FORMATS,
 )
 from tests.controllers import AuthenticationEndpoints
-from tests.utils.string_generators import generate_unicode_test_cases, decode_token_payload, generate_random_string
+from tests.utils.string_generators import (
+    generate_unicode_test_cases,
+    decode_token_payload,
+    generate_random_string,
+)
 
 
 class TestRegisterEndpoint:

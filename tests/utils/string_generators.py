@@ -21,7 +21,7 @@ def generate_unicode_username(language: str = None) -> str:
         "bulgarian": (0x0410, 0x044F),  # Cyrillic alphabet
         "arabic": (0x0627, 0x064A),  # Basic Arabic letters only (أ to ي)
         "korean": (0xAC00, 0xD7AF),  # Korean Hangul
-        "japanese": (0x3042, 0x3096)  # Japanese Hiragana letters only (あ to ゖ)
+        "japanese": (0x3042, 0x3096),  # Japanese Hiragana letters only (あ to ゖ)
     }
     length = random.randint(4, 8)
     if language is None:

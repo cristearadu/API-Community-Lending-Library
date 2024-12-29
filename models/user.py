@@ -1,14 +1,19 @@
-import uuid
-
-from sqlalchemy import Column, Text, String
+from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from database import Base, BaseModel
+from .roles import UserRole
 
 
-class User(Base):
+class User(Base, BaseModel):
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(50), unique=True, nullable=False)
-    email = Column(String(100), unique=True, nullable=False)
-    hashed_password = Column(Text, nullable=False)  # Use Text for potentially long
+    email = Column(String(255), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    role_id = Column(ForeignKey("roles.id"), nullable=False)
+
+    # Relationships
+    role = relationship("Role", backref="users")
+    listings = relationship("Listing", back_populates="seller")
+    cart_items = relationship("CartItem", back_populates="user")
+    reviews = relationship("Review", back_populates="reviewer")

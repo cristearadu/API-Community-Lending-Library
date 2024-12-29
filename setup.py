@@ -26,19 +26,19 @@ def rebuild_docker():
         # Stop and remove existing containers
         print("🛑 Stopping existing containers...")
         subprocess.run(["docker", "compose", "down"], check=True)
-        
+
         # Remove existing containers
         print("🗑️  Removing old containers...")
         subprocess.run(["docker", "compose", "rm", "-f"], check=True)
-        
+
         # Build without cache
         print("🏗️  Building fresh containers...")
         subprocess.run(["docker", "compose", "build", "--no-cache"], check=True)
-        
+
         # Start new containers
         print("🚀 Starting new containers...")
         subprocess.run(["docker", "compose", "up", "-d"], check=True)
-        
+
         print("✅ Docker rebuild complete!")
         return True
     except subprocess.CalledProcessError as e:
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         if check_api_status():
             print("\n✅ API is responding!")
-            
+
             if run_tests():
                 print("\n✅ All tests passed!")
                 print("\n💡 API container is running. Showing logs:")
