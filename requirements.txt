@@ -1,12 +1,10 @@
-fastapi>=0.100.0
-uvicorn>=0.22.0
-pydantic>=2.0.0
-sqlalchemy>=2.0.0
-alembic>=1.11.0
-passlib[bcrypt]>=1.7.4
-python-jose[cryptography]>=3.3.0
-bcrypt>=4.0.1
-python-multipart  # for form data handling
-email-validator  # for email validation
-pytest>=7.4.0
-httpx>=0.24.0  # for async test client
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+python-jose==3.3.0
+passlib==1.7.4
+python-multipart==0.0.6
+email-validator==2.1.0
+pytest==7.4.3
+pytest-asyncio==0.21.1
+requests==2.31.0

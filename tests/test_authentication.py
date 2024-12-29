@@ -3,11 +3,14 @@ import uuid
 from enum import Enum
 from functools import partial
 from tests.requests_builder import http_request
+import time
+from tests.utils import decode_token_payload
 
 
 class AuthenticationEndpoints(Enum):
     REGISTER = ("POST", "http://127.0.0.1:8000/register", "REGISTER USER")
-    LOGIN = ("POST", "http://127.0.0.1:8000/login?username={username}&password={password}", "LOGIN USER")
+    LOGIN = ("POST", "http://127.0.0.1:8000/login", "LOGIN USER")
+    ME = ("GET", "http://127.0.0.1:8000/users/me", "GET CURRENT USER")
 
     def __init__(self, request_type, path, switcher):
         self.request_type = request_type
@@ -27,8 +30,15 @@ class AuthenticationController:
             AuthenticationEndpoints.LOGIN.switcher: partial(
                 http_request,
                 AuthenticationEndpoints.LOGIN.request_type,
-                AuthenticationEndpoints.LOGIN.path.format(username=kwargs.get("username"),
-                                                          password=kwargs.get("password")),
+                AuthenticationEndpoints.LOGIN.path,
+                headers, 
+                {"username": kwargs.get("username"), "password": kwargs.get("password")},
+                None
+            ),
+            AuthenticationEndpoints.ME.switcher: partial(
+                http_request,
+                AuthenticationEndpoints.ME.request_type,
+                AuthenticationEndpoints.ME.path,
                 headers, None, None
             )
         }
@@ -40,6 +50,8 @@ class AuthenticationController:
 
 STATUS_CODE_BAD_REQUEST = 400
 STATUS_CODE_SUCCESS = 200
+STATUS_CODE_UNAUTHORIZED = 401
+STATUS_CODE_FORBIDDEN = 403
 
 DETAILS = {
     "USERNAME_ALREADY_EXISTS": "Username already registered",
@@ -53,6 +65,9 @@ DETAILS = {
     "PASSWORD_MISSING_LOWERCASE": "Password must contain at least one lowercase letter",
     "PASSWORD_MISSING_DIGIT": "Password must contain at least one digit",
     "PASSWORD_MISSING_SPECIAL": "Password must contain at least one special character",
+    "USERNAME_EMPTY": "Username cannot be empty",
+    "PASSWORD_EMPTY": "Password cannot be empty",
+    "INVALID_CREDENTIALS": "Incorrect username or password"
 }
 
 
@@ -227,3 +242,119 @@ class TestRegisterEndpoint:
         )
         assert response.status_code == STATUS_CODE_BAD_REQUEST
         assert response.json()["detail"] == "Email already registered"
+
+
+class TestLoginEndpoint:
+    def test_login_success(self, auth_user):
+        """Test already covered by auth_user fixture"""
+        assert auth_user["token"] is not None
+        assert len(auth_user["token"]) > 0
+        assert auth_user["token"].count('.') == 2
+
+    def test_login_success_multiple_times(self, controller, valid_headers, auth_user):
+        # Get first token from auth_user
+        token1 = auth_user["token"]
+        
+        # Wait 2 seconds to ensure different exp time
+        time.sleep(2)
+        
+        # Get second token
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username=auth_user["user"]["username"],
+            password=auth_user["user"]["password"]
+        )
+        assert response.status_code == 200
+        token2 = response.json()["access_token"]
+    
+        # Verify tokens are different
+        assert token1 != token2
+        
+        # Compare token payloads
+        payload1 = decode_token_payload(token1)
+        payload2 = decode_token_payload(token2)
+        
+        # Verify that only expiration times are different
+        assert payload1['sub'] == payload2['sub']  # Same username
+        assert payload1['exp'] != payload2['exp']  # Different expiration times
+
+    def test_login_empty_username(self, controller, valid_headers):
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username="",
+            password="anypassword"
+        )
+        assert response.status_code == STATUS_CODE_BAD_REQUEST
+        assert response.json()["detail"] == DETAILS["USERNAME_EMPTY"]
+
+    def test_login_empty_password(self, controller, valid_headers, auth_user):
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username=auth_user["user"]["username"],
+            password=""
+        )
+        assert response.status_code == STATUS_CODE_BAD_REQUEST
+        assert response.json()["detail"] == DETAILS["PASSWORD_EMPTY"]
+
+    def test_login_invalid_username(self, controller, valid_headers):
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username="nonexistent_user",
+            password="ValidPassword1!"
+        )
+        assert response.status_code == STATUS_CODE_UNAUTHORIZED
+        assert response.json()["detail"] == DETAILS["INVALID_CREDENTIALS"]
+
+    def test_login_invalid_password(self, controller, valid_headers, auth_user):
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username=auth_user["user"]["username"],
+            password="WrongPassword1!"
+        )
+        assert response.status_code == STATUS_CODE_UNAUTHORIZED
+        assert response.json()["detail"] == DETAILS["INVALID_CREDENTIALS"]
+
+    def test_login_case_sensitive_username(self, controller, valid_headers, auth_user):
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username=auth_user["user"]["username"].upper(),
+            password=auth_user["user"]["password"]
+        )
+        assert response.status_code == STATUS_CODE_UNAUTHORIZED
+        assert response.json()["detail"] == DETAILS["INVALID_CREDENTIALS"]
+
+    def test_login_success_with_protected_endpoint(self, controller, auth_user):
+        # Test protected endpoint
+        me_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.ME.switcher,
+            headers=auth_user["headers"]
+        )
+        assert me_response.status_code == 200
+        assert me_response.json()["username"] == auth_user["user"]["username"]
+        assert me_response.json()["email"] == auth_user["user"]["email"]
+
+    def test_protected_endpoint_without_token(self, controller, valid_headers):
+        """Test that protected endpoint fails without token (Forbidden)"""
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.ME.switcher,
+            headers=valid_headers
+        )
+        assert response.status_code == STATUS_CODE_FORBIDDEN
+
+    def test_protected_endpoint_with_invalid_token(self, controller, valid_headers):
+        """Test that protected endpoint fails with invalid token (Unauthorized)"""
+        invalid_auth_headers = {
+            **valid_headers,
+            "Authorization": "Bearer invalid.token.here"
+        }
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.ME.switcher,
+            headers=invalid_auth_headers
+        )
+        assert response.status_code == STATUS_CODE_UNAUTHORIZED

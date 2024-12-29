@@ -114,3 +114,37 @@ class UserResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class LoginUser(BaseModel):
+    username: str
+    password: str
+
+    @field_validator('username')
+    def username_exists(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username cannot be empty"
+            )
+            
+        db = getattr(cls, 'db', None)
+        if not db:
+            return v
+            
+        user = db.query(User).filter(User.username == v).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password"
+            )
+        return v
+
+    @field_validator('password')
+    def password_not_empty(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password cannot be empty"
+            )
+        return v

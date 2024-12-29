@@ -6,7 +6,7 @@ from utils.auth import create_access_token
 from config import settings
 from database import get_db
 from models.user import User
-from schemas.user import UserCreate, UserResponse
+from schemas.user import UserCreate, UserResponse, LoginUser
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,18 +24,25 @@ def authenticate_user(db: Session, username: str, password: str):
 
 
 @router.post("/login")
-def login(username: str, password: str, db: Session = Depends(get_db)):
-    user = authenticate_user(db, username, password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+async def login(user_data: LoginUser, db: Session = Depends(get_db)):
+    # Attach db to LoginUser class for validation
+    LoginUser.db = db
+    try:
+        user = authenticate_user(db, user_data.username, user_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+            )
+        
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.username}, expires_delta=access_token_expires
         )
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+        return {"access_token": access_token, "token_type": "bearer"}
+    finally:
+        # Clean up
+        delattr(LoginUser, 'db')
 
 
 @router.post("/register", response_model=UserResponse)
