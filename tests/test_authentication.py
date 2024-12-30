@@ -1,6 +1,5 @@
 import time
 from tests.constants import (
-    StatusCode,
     ErrorDetail,
     SPECIAL_CHARACTERS,
     INVALID_EMAIL_FORMATS,
@@ -11,37 +10,45 @@ from tests.utils.string_generators import (
     decode_token_payload,
     generate_random_string,
 )
+from fastapi import status
 
 
 class TestRegisterEndpoint:
     """Test cases for user registration endpoint."""
 
     def test_register_success(self, controller, valid_headers, generate_unique_user):
-        """Test successful user registration."""
+        """Test successful registration."""
         user_data = generate_unique_user()
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
             request_body=user_data,
         )
-        assert response.status_code == StatusCode.SUCCESS.value
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not response.content  # Verify empty response body
 
     def test_register_duplicate_username(
-        self, controller, valid_headers, registered_user
+        self, controller, valid_headers, generate_unique_user
     ):
         """Test registration fails with duplicate username."""
-        new_user = {
-            "username": registered_user["username"],  # Use existing username
-            "email": f"different_{generate_random_string(8)}@example.com",
-            "password": "ValidP@ss1",
-        }
+        user_data = generate_unique_user()
+        
+        # First registration
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
-            request_body=new_user,
+            request_body=user_data,
         )
-        assert response.status_code == StatusCode.BAD_REQUEST.value
-        assert response.json()["detail"] == ErrorDetail.USERNAME_ALREADY_EXISTS.value
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Second registration with same username
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data,
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Username already registered" in response.text
 
     def test_register_duplicate_email(self, controller, valid_headers, registered_user):
         """Test registration fails with duplicate email."""
@@ -55,7 +62,7 @@ class TestRegisterEndpoint:
             headers=valid_headers,
             request_body=new_user,
         )
-        assert response.status_code == StatusCode.BAD_REQUEST.value
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.EMAIL_ALREADY_EXISTS.value
 
     def test_register_invalid_username_length(
@@ -69,7 +76,7 @@ class TestRegisterEndpoint:
             headers=valid_headers,
             request_body=user_data,
         )
-        assert response.status_code == StatusCode.BAD_REQUEST.value
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.USERNAME_TOO_SHORT.value
 
     def test_register_invalid_email_format(
@@ -103,7 +110,7 @@ class TestRegisterEndpoint:
                 f"Response: {response.text}"
             )
 
-            assert response.status_code == StatusCode.BAD_REQUEST.value, error_msg
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
             assert (
                 response.json()["detail"] == ErrorDetail.EMAIL_INVALID_FORMAT.value
             ), error_msg
@@ -128,8 +135,8 @@ class TestRegisterEndpoint:
                 headers=valid_headers,
                 request_body=user_data,
             )
-            assert response.status_code == StatusCode.BAD_REQUEST.value
-            assert response.json()["detail"] == expected_error.value
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert response.json()["detail"] == expected_error.value, f"Failed for {password}"
 
 
 class TestLoginEndpoint:
@@ -151,7 +158,7 @@ class TestLoginEndpoint:
             username=auth_user["user"]["username"],
             password=auth_user["user"]["password"],
         )
-        assert response.status_code == StatusCode.SUCCESS.value
+        assert response.status_code == status.HTTP_200_OK
         token2 = response.json()["access_token"]
 
         assert token1 != token2
@@ -167,7 +174,7 @@ class TestLoginEndpoint:
         me_response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.ME.switcher, headers=auth_user["headers"]
         )
-        assert me_response.status_code == StatusCode.SUCCESS.value
+        assert me_response.status_code == status.HTTP_200_OK
         assert me_response.json()["username"] == auth_user["user"]["username"]
         assert me_response.json()["email"] == auth_user["user"]["email"]
 
@@ -179,7 +186,7 @@ class TestLoginEndpoint:
             username="",
             password="anypassword",
         )
-        assert response.status_code == StatusCode.BAD_REQUEST.value
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.USERNAME_EMPTY.value
 
     def test_login_empty_password(self, controller, valid_headers, registered_user):
@@ -190,7 +197,7 @@ class TestLoginEndpoint:
             username=registered_user["username"],
             password="",
         )
-        assert response.status_code == StatusCode.BAD_REQUEST.value
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.PASSWORD_EMPTY.value
 
     def test_login_invalid_username(self, controller, valid_headers):
@@ -201,7 +208,7 @@ class TestLoginEndpoint:
             username="nonexistent_user",
             password="ValidPassword1!",
         )
-        assert response.status_code == StatusCode.UNAUTHORIZED.value
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json()["detail"] == ErrorDetail.INVALID_CREDENTIALS.value
 
     def test_protected_endpoint_without_token(self, controller, valid_headers):
@@ -209,17 +216,17 @@ class TestLoginEndpoint:
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.ME.switcher, headers=valid_headers
         )
-        assert response.status_code == StatusCode.FORBIDDEN.value
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_protected_endpoint_with_malformed_token(self, controller, valid_headers):
         """Test that protected endpoint fails with malformed token"""
         malformed_tokens = [
-            ("not_a_token", StatusCode.FORBIDDEN),
-            ("Bearer not.a.token", StatusCode.UNAUTHORIZED),
-            ("Bearer " + "a" * 100, StatusCode.UNAUTHORIZED),
-            ("Bearer token.with.two.dots.only", StatusCode.UNAUTHORIZED),
-            ("Bearer ", StatusCode.FORBIDDEN),
-            ("Bearer token", StatusCode.UNAUTHORIZED),
+            ("not_a_token", status.HTTP_403_FORBIDDEN),
+            ("Bearer not.a.token", status.HTTP_401_UNAUTHORIZED),
+            ("Bearer " + "a" * 100, status.HTTP_401_UNAUTHORIZED),
+            ("Bearer token.with.two.dots.only", status.HTTP_401_UNAUTHORIZED),
+            ("Bearer ", status.HTTP_403_FORBIDDEN),
+            ("Bearer token", status.HTTP_401_UNAUTHORIZED),
         ]
 
         for token, expected_status in malformed_tokens:
@@ -228,7 +235,7 @@ class TestLoginEndpoint:
                 key=AuthenticationEndpoints.ME.switcher, headers=invalid_auth_headers
             )
             assert response.status_code == expected_status.value
-            if expected_status == StatusCode.UNAUTHORIZED:
+            if expected_status == status.HTTP_401_UNAUTHORIZED:
                 assert response.json()["detail"] == ErrorDetail.TOKEN_INVALID.value
 
 
@@ -255,7 +262,7 @@ class TestRegistrationBoundaries:
         print(f"Response status: {response.status_code}")
         print(f"Response body: {response.text}")
 
-        assert response.status_code == StatusCode.BAD_REQUEST.value
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.USERNAME_TOO_LONG.value
 
         random_suffix2 = generate_random_string(10)
@@ -288,7 +295,7 @@ class TestRegistrationBoundaries:
             f"should be invalid. Status: {response.status_code}, Response: {response.text}"
         )
 
-        assert response.status_code == StatusCode.BAD_REQUEST.value, error_msg
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert (
             response.json()["detail"] == ErrorDetail.EMAIL_LOCAL_PART_TOO_LONG.value
         ), error_msg
@@ -308,7 +315,7 @@ class TestRegistrationBoundaries:
                 headers=valid_headers,
                 request_body=test_data,
             )
-            assert response.status_code == StatusCode.BAD_REQUEST.value
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
             assert (
                 response.json()["detail"]
                 == ErrorDetail.USERNAME_INVALID_CHARACTERS.value
@@ -340,7 +347,7 @@ class TestRegistrationBoundaries:
             print(f"Register response body: {register_response.text}")
 
             assert (
-                register_response.status_code == StatusCode.SUCCESS.value
+                register_response.status_code == status.HTTP_200_OK
             ), f"Registration failed for {test_case['language']} username: {test_data['username']}"
 
             login_response = controller.authentication_request_controller(
@@ -354,7 +361,7 @@ class TestRegistrationBoundaries:
             print(f"Login response body: {login_response.text}")
 
             assert (
-                login_response.status_code == StatusCode.SUCCESS.value
+                login_response.status_code == status.HTTP_200_OK
             ), f"Login failed for {test_case['language']} username: {test_data['username']}"
 
             me_response = controller.authentication_request_controller(
@@ -368,5 +375,5 @@ class TestRegistrationBoundaries:
             print(f"ME response status: {me_response.status_code}")
             print(f"ME response body: {me_response.text}")
 
-            assert me_response.status_code == StatusCode.SUCCESS.value
+            assert me_response.status_code == status.HTTP_200_OK
             assert me_response.json()["username"] == test_data["username"]

@@ -4,12 +4,15 @@ from typing import List, Optional
 from decimal import Decimal
 from models.order import OrderStatus
 
+
 class OrderItemBase(BaseModel):
     listing_id: UUID
     quantity: Decimal = Field(..., gt=0)
 
+
 class OrderItemCreate(OrderItemBase):
     pass
+
 
 class OrderItemResponse(OrderItemBase):
     id: UUID
@@ -19,16 +22,20 @@ class OrderItemResponse(OrderItemBase):
     class Config:
         from_attributes = True
 
+
 class OrderBase(BaseModel):
     buyer_id: UUID
     total_amount: Decimal = Field(..., gt=0)
     status: OrderStatus = OrderStatus.PENDING
 
+
 class OrderCreate(OrderBase):
     items: List[OrderItemCreate]
 
+
 class OrderUpdate(BaseModel):
     status: Optional[OrderStatus] = None
+
 
 class OrderResponse(OrderBase):
     id: UUID
@@ -36,6 +43,7 @@ class OrderResponse(OrderBase):
 
     class Config:
         from_attributes = True
+
 
 # For order history and listing
 class OrderSummary(BaseModel):
@@ -45,4 +53,4 @@ class OrderSummary(BaseModel):
     created_at: str
 
     class Config:
-        from_attributes = True 
+        from_attributes = True

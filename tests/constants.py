@@ -4,6 +4,7 @@ from typing import Callable, List
 
 class StatusCode(Enum):
     SUCCESS = 200
+    CREATED = 201
     BAD_REQUEST = 400
     UNAUTHORIZED = 401
     FORBIDDEN = 403
@@ -31,6 +32,8 @@ class ErrorDetail(Enum):
     INVALID_CREDENTIALS = "Incorrect username or password"
     TOKEN_EXPIRED = "Could not validate credentials"
     TOKEN_INVALID = "Could not validate credentials"
+    ADMIN_REGISTRATION_FORBIDDEN = "Cannot register as admin"
+    INVALID_ROLE = "Invalid role"
 
 
 # Test Data
@@ -79,3 +82,9 @@ INVALID_EMAIL_FORMATS: List[Callable[[str], str]] = [
     lambda x: f"",  # Empty string
     lambda x: f" ",  # Just space
 ]
+
+
+class UserRole(str, Enum):
+    BUYER = "buyer"
+    SELLER = "seller"
+    ADMIN = "admin"

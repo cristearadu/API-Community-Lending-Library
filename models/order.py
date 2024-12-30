@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, ForeignKey, Numeric, Enum as SQLAlchemyEn
 from sqlalchemy.orm import relationship
 from database import Base, BaseModel
 
+
 class OrderStatus(str, Enum):
     PENDING = "PENDING"
     PAID = "PAID"
@@ -10,6 +11,7 @@ class OrderStatus(str, Enum):
     DELIVERED = "DELIVERED"
     CANCELLED = "CANCELLED"
     REFUNDED = "REFUNDED"
+
 
 class Order(Base, BaseModel):
     __tablename__ = "orders"
@@ -20,7 +22,10 @@ class Order(Base, BaseModel):
 
     # Relationships
     buyer = relationship("User", backref="orders")
-    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
+
 
 class OrderItem(Base, BaseModel):
     __tablename__ = "order_items"
@@ -32,4 +37,4 @@ class OrderItem(Base, BaseModel):
 
     # Relationships
     order = relationship("Order", back_populates="items")
-    listing = relationship("Listing") 
+    listing = relationship("Listing")

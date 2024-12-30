@@ -1,6 +1,7 @@
 import pytest
+from fastapi import status
 from tests.utils.string_generators import generate_random_string
-from tests.constants import StatusCode
+from tests.constants import UserRole
 from tests.controllers import AuthenticationController, AuthenticationEndpoints
 
 
@@ -23,12 +24,13 @@ def valid_headers():
 def generate_unique_user():
     """Fixture to generate a unique user with random data."""
 
-    def _generate(prefix="user"):
+    def _generate(prefix="user", role=UserRole.BUYER):
         unique_suffix = generate_random_string(8)
         return {
             "username": f"{prefix}_{unique_suffix}",
             "email": f"{prefix}_{unique_suffix}@example.com",
             "password": f"ValidP@ss{unique_suffix}1",
+            "role": role,
         }
 
     return _generate
@@ -43,7 +45,7 @@ def registered_user(controller, valid_headers, generate_unique_user):
         headers=valid_headers,
         request_body=user_data,
     )
-    assert response.status_code == StatusCode.SUCCESS.value
+    assert response.status_code == status.HTTP_200_OK
     return user_data
 
 
@@ -58,8 +60,9 @@ def auth_user(controller, valid_headers, generate_unique_user):
         key=AuthenticationEndpoints.REGISTER.switcher,
         headers=valid_headers,
         request_body=user_data,
+        role=user_data["role"],
     )
-    assert register_response.status_code == StatusCode.SUCCESS.value
+    assert register_response.status_code == status.HTTP_204_NO_CONTENT
 
     login_response = controller.authentication_request_controller(
         key=AuthenticationEndpoints.LOGIN.switcher,
@@ -67,7 +70,7 @@ def auth_user(controller, valid_headers, generate_unique_user):
         username=user_data["username"],
         password=user_data["password"],
     )
-    assert login_response.status_code == StatusCode.SUCCESS.value
+    assert login_response.status_code == status.HTTP_200_OK
     token = login_response.json()["access_token"]
 
     auth_headers = {**valid_headers, "Authorization": f"Bearer {token}"}
@@ -83,6 +86,6 @@ def auth_user(controller, valid_headers, generate_unique_user):
     #         key=AuthenticationEndpoints.DELETE_USER.switcher,
     #         headers=auth_headers
     #     )
-    #     assert delete_response.status_code == StatusCode.SUCCESS.value
+    #     assert delete_response.status_code == status.HTTP_200_OK
     # except Exception as e:
     #     print(f"Error during user cleanup: {e}")

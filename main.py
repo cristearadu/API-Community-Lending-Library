@@ -16,6 +16,7 @@ app.include_router(cart.router)
 app.include_router(reviews.router)
 app.include_router(orders.router)
 
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Marketplace API"}

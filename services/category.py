@@ -4,6 +4,7 @@ from schemas.category import CategoryCreate, CategoryUpdate
 from typing import List, Optional
 from uuid import UUID
 
+
 class CategoryService:
     def __init__(self, db: Session):
         self.db = db
@@ -21,7 +22,9 @@ class CategoryService:
         self.db.refresh(db_category)
         return db_category
 
-    def update_category(self, category_id: UUID, category: CategoryUpdate) -> Optional[Category]:
+    def update_category(
+        self, category_id: UUID, category: CategoryUpdate
+    ) -> Optional[Category]:
         db_category = self.get_category_by_id(category_id)
         if not db_category:
             return None
@@ -40,4 +43,4 @@ class CategoryService:
 
         self.db.delete(db_category)
         self.db.commit()
-        return True 
+        return True

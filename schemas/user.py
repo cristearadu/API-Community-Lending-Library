@@ -20,9 +20,10 @@ class Token(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., example="john_doe")
-    email: str = Field(..., example="john_doe@example.com")
-    password: SecretStr = Field(..., example="SecurePass1!")
+    username: str = Field(..., min_length=3, max_length=30, example="john_doe")
+    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
+                       example="john_doe@example.com")
+    password: str = Field(..., min_length=8, example="SecurePass1!")
     role: UserRole = Field(default=UserRole.BUYER, example="buyer")
 
     model_config = {"arbitrary_types_allowed": True}
@@ -81,6 +82,44 @@ class UserCreate(BaseModel):
 
         return email
 
+    @field_validator("password")
+    def validate_password(cls, password: SecretStr):
+        # Length Check
+        if len(password) < 8:
+            raise HTTPException(
+                status_code=400, 
+                detail="Password must be at least 8 characters long"
+            )
+
+        # Uppercase Letter Check
+        if not re.search(r"[A-Z]", password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one uppercase letter",
+            )
+
+        # Lowercase Letter Check
+        if not re.search(r"[a-z]", password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one lowercase letter",
+            )
+
+        # Digit Check
+        if not re.search(r"\d", password):
+            raise HTTPException(
+                status_code=400, detail="Password must contain at least one digit"
+            )
+
+        # Special Character Check
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            raise HTTPException(
+                status_code=400,
+                detail="Password must contain at least one special character",
+            )
+
+        return password
+
     @model_validator(mode="before")
     @classmethod
     def validate_unique_fields(cls, data):
@@ -104,45 +143,6 @@ class UserCreate(BaseModel):
             )
         return data
 
-    @field_validator("password")
-    def validate_password(cls, password: SecretStr):
-        password_str = password.get_secret_value()
-
-        # Length Check
-        if len(password_str) < 8:
-            raise HTTPException(
-                status_code=400, detail="Password must be at least 8 characters long"
-            )
-
-        # Uppercase Letter Check
-        if not re.search(r"[A-Z]", password_str):
-            raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one uppercase letter",
-            )
-
-        # Lowercase Letter Check
-        if not re.search(r"[a-z]", password_str):
-            raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one lowercase letter",
-            )
-
-        # Digit Check
-        if not re.search(r"\d", password_str):
-            raise HTTPException(
-                status_code=400, detail="Password must contain at least one digit"
-            )
-
-        # Special Character Check
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password_str):
-            raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one special character",
-            )
-
-        return password
-
 
 class UserResponse(BaseModel):
     id: UUID
@@ -151,7 +151,14 @@ class UserResponse(BaseModel):
     role: UserRole
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def extract_role_name(cls, v):
+        if hasattr(v, 'name'):
+            return v.name
+        return v
 
 
 class LoginUser(BaseModel):

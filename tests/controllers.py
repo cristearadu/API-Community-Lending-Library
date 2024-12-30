@@ -59,25 +59,20 @@ class AuthenticationController:
         request_body: Optional[Dict[str, Any]] = None,
         **kwargs
     ) -> requests.Response:
-        """
-        Handle authentication requests based on the endpoint key.
+        """Handle authentication requests based on the endpoint key."""
 
-        Args:
-            key: The endpoint identifier
-            headers: Request headers
-            request_body: Request body for POST requests
-            **kwargs: Additional parameters for the request
+        # Handle request body for registration
+        if key == AuthenticationEndpoints.REGISTER.switcher and request_body:
+            if "role" not in request_body:
+                request_body["role"] = "buyer"  # lowercase role
 
-        Returns:
-            Response from the API
-        """
         switcher = {
             AuthenticationEndpoints.REGISTER.switcher: partial(
                 http_request,
                 AuthenticationEndpoints.REGISTER.request_type,
                 AuthenticationEndpoints.REGISTER.path,
                 headers,
-                request_body,
+                request_body,  # Use request_body directly
                 None,
             ),
             AuthenticationEndpoints.LOGIN.switcher: partial(
@@ -100,5 +95,4 @@ class AuthenticationController:
                 None,
             ),
         }
-
         return switcher.get(key)()

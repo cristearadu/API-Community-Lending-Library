@@ -6,31 +6,37 @@ from models.order import Order, OrderStatus
 from schemas.review import ReviewCreate, ReviewUpdate
 from fastapi import HTTPException, status
 
+
 class ReviewService:
     def __init__(self, db: Session):
         self.db = db
 
     def create_review(self, user_id: UUID, review_data: ReviewCreate) -> Review:
         # Verify user has purchased the item
-        order = self.db.query(Order).filter(
-            and_(
-                Order.user_id == user_id,
-                Order.status == OrderStatus.COMPLETED
+        order = (
+            self.db.query(Order)
+            .filter(
+                and_(Order.user_id == user_id, Order.status == OrderStatus.COMPLETED)
             )
-        ).join(Order.items).filter(
-            Order.items.any(listing_id=review_data.listing_id)
-        ).first()
+            .join(Order.items)
+            .filter(Order.items.any(listing_id=review_data.listing_id))
+            .first()
+        )
 
         if not order:
             raise ValueError("You can only review items you have purchased")
 
         # Check if user already reviewed this listing
-        existing_review = self.db.query(Review).filter(
-            and_(
-                Review.listing_id == review_data.listing_id,
-                Review.reviewer_id == user_id
+        existing_review = (
+            self.db.query(Review)
+            .filter(
+                and_(
+                    Review.listing_id == review_data.listing_id,
+                    Review.reviewer_id == user_id,
+                )
             )
-        ).first()
+            .first()
+        )
 
         if existing_review:
             raise ValueError("You have already reviewed this item")
@@ -39,7 +45,7 @@ class ReviewService:
             listing_id=review_data.listing_id,
             reviewer_id=user_id,
             rating=review_data.rating,
-            comment=review_data.comment
+            comment=review_data.comment,
         )
 
         self.db.add(review)
@@ -47,18 +53,25 @@ class ReviewService:
         self.db.refresh(review)
         return review
 
-    def get_listing_reviews(self, listing_id: UUID, skip: int = 0, limit: int = 100) -> list[Review]:
-        return self.db.query(Review).filter(
-            Review.listing_id == listing_id
-        ).offset(skip).limit(limit).all()
+    def get_listing_reviews(
+        self, listing_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[Review]:
+        return (
+            self.db.query(Review)
+            .filter(Review.listing_id == listing_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
-    def update_review(self, review_id: UUID, user_id: UUID, review_data: ReviewUpdate) -> Review:
-        review = self.db.query(Review).filter(
-            and_(
-                Review.id == review_id,
-                Review.reviewer_id == user_id
-            )
-        ).first()
+    def update_review(
+        self, review_id: UUID, user_id: UUID, review_data: ReviewUpdate
+    ) -> Review:
+        review = (
+            self.db.query(Review)
+            .filter(and_(Review.id == review_id, Review.reviewer_id == user_id))
+            .first()
+        )
 
         if not review:
             return None
@@ -73,11 +86,10 @@ class ReviewService:
         return review
 
     def delete_review(self, review_id: UUID, user_id: UUID) -> bool:
-        result = self.db.query(Review).filter(
-            and_(
-                Review.id == review_id,
-                Review.reviewer_id == user_id
-            )
-        ).delete()
+        result = (
+            self.db.query(Review)
+            .filter(and_(Review.id == review_id, Review.reviewer_id == user_id))
+            .delete()
+        )
         self.db.commit()
-        return result > 0 
+        return result > 0
