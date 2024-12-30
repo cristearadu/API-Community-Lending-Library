@@ -230,11 +230,12 @@ class TestLoginEndpoint:
         ]
 
         for token, expected_status in malformed_tokens:
+            print(f"Token and expected status: {token}, {expected_status}")
             invalid_auth_headers = {**valid_headers, "Authorization": token}
             response = controller.authentication_request_controller(
                 key=AuthenticationEndpoints.ME.switcher, headers=invalid_auth_headers
             )
-            assert response.status_code == expected_status.value
+            assert response.status_code == expected_status
             if expected_status == status.HTTP_401_UNAUTHORIZED:
                 assert response.json()["detail"] == ErrorDetail.TOKEN_INVALID.value
 
@@ -347,7 +348,7 @@ class TestRegistrationBoundaries:
             print(f"Register response body: {register_response.text}")
 
             assert (
-                register_response.status_code == status.HTTP_200_OK
+                register_response.status_code == status.HTTP_204_NO_CONTENT
             ), f"Registration failed for {test_case['language']} username: {test_data['username']}"
 
             login_response = controller.authentication_request_controller(

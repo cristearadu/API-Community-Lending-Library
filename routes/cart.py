@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.cart import CartItemCreate, CartItemUpdate, CartItemResponse, CartSummary
 from services.cart import CartService
-from auth.dependencies import get_current_user
+from services.auth import get_current_user
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 

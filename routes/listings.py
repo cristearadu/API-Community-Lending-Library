@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.listing import ListingCreate, ListingUpdate, ListingResponse
 from services.listing import ListingService
-from auth.dependencies import get_current_user, check_seller_role
+from services.auth import get_current_user, check_seller_role
 from models.listing import ListingStatus
 
 router = APIRouter(prefix="/listings", tags=["Listings"])

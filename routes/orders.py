@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.order import OrderResponse, OrderCreate
 from services.order import OrderService
-from auth.dependencies import get_current_user, check_admin_role
+from services.auth import get_current_user, check_admin_role
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 

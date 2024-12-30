@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
 from services.review import ReviewService
-from auth.dependencies import get_current_user
+from services.auth import get_current_user
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 

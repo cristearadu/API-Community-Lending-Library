@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from services.category import CategoryService
-from auth.dependencies import get_current_user, check_admin_role
+from services.auth import get_current_user, check_admin_role
 
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
