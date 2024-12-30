@@ -29,7 +29,7 @@ def generate_unique_user():
         return {
             "username": f"{prefix}_{unique_suffix}",
             "email": f"{prefix}_{unique_suffix}@example.com",
-            "password": f"ValidP@ss{unique_suffix}1",
+            "password": f"ValidP@ss1",
             "role": role,
         }
 
@@ -45,7 +45,7 @@ def registered_user(controller, valid_headers, generate_unique_user):
         headers=valid_headers,
         request_body=user_data,
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_204_NO_CONTENT
     return user_data
 
 

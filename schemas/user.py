@@ -20,11 +20,10 @@ class Token(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=30, example="john_doe")
-    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
-                       example="john_doe@example.com")
-    password: str = Field(..., min_length=8, example="SecurePass1!")
-    role: UserRole = Field(default=UserRole.BUYER, example="buyer")
+    username: str = Field(example="john_doe")
+    email: str = Field(example="john_doe@example.com")
+    password: str = Field(xample="SecurePass1!")
+    role: UserRole = Field(example="buyer")
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -83,41 +82,32 @@ class UserCreate(BaseModel):
         return email
 
     @field_validator("password")
-    def validate_password(cls, password: SecretStr):
-        # Length Check
+    def validate_password(cls, password: str) -> str:
         if len(password) < 8:
             raise HTTPException(
-                status_code=400, 
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Password must be at least 8 characters long"
             )
-
-        # Uppercase Letter Check
-        if not re.search(r"[A-Z]", password):
+        if not any(c.isupper() for c in password):
             raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one uppercase letter",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one uppercase letter"
             )
-
-        # Lowercase Letter Check
-        if not re.search(r"[a-z]", password):
+        if not any(c.islower() for c in password):
             raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one lowercase letter",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one lowercase letter"
             )
-
-        # Digit Check
-        if not re.search(r"\d", password):
+        if not any(c.isdigit() for c in password):
             raise HTTPException(
-                status_code=400, detail="Password must contain at least one digit"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one digit"
             )
-
-        # Special Character Check
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        if not any(c in "!@#$%^&*(),.?\":{}|<>" for c in password):
             raise HTTPException(
-                status_code=400,
-                detail="Password must contain at least one special character",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must contain at least one special character"
             )
-
         return password
 
     @model_validator(mode="before")
