@@ -1,11 +1,6 @@
 import re
 from uuid import UUID
-from pydantic import (
-    BaseModel,
-    Field,
-    field_validator,
-    model_validator
-)
+from pydantic import BaseModel, Field, field_validator, model_validator
 from models.user import User
 from models.roles import UserRole
 from fastapi import HTTPException, status
@@ -90,27 +85,27 @@ class UserCreate(BaseModel):
         if len(password) < 8:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must be at least 8 characters long"
+                detail="Password must be at least 8 characters long",
             )
         if not any(c.isupper() for c in password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain at least one uppercase letter"
+                detail="Password must contain at least one uppercase letter",
             )
         if not any(c.islower() for c in password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain at least one lowercase letter"
+                detail="Password must contain at least one lowercase letter",
             )
         if not any(c.isdigit() for c in password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain at least one digit"
+                detail="Password must contain at least one digit",
             )
-        if not any(c in "!@#$%^&*(),.?\":{}|<>" for c in password):
+        if not any(c in '!@#$%^&*(),.?":{}|<>' for c in password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password must contain at least one special character"
+                detail="Password must contain at least one special character",
             )
         return password
 
@@ -137,7 +132,7 @@ class UserCreate(BaseModel):
             )
         return data
 
-    @field_validator('role')
+    @field_validator("role")
     @classmethod
     def validate_role(cls, value: str) -> str:
         try:
@@ -145,8 +140,7 @@ class UserCreate(BaseModel):
             return role.value
         except ValueError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid role"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role"
             )
 
 
@@ -159,10 +153,10 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-    @field_validator('role', mode='before')
+    @field_validator("role", mode="before")
     @classmethod
     def extract_role_name(cls, v):
-        if hasattr(v, 'name'):
+        if hasattr(v, "name"):
             return v.name
         return v
 
@@ -190,6 +184,19 @@ class LoginUser(BaseModel):
                 detail="Incorrect username or password",
             )
         return v
+
+    @field_validator("password")
+    def password_not_empty(cls, v):
+        if not v or len(v.strip()) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password cannot be empty",
+            )
+        return v
+
+
+class UserDelete(BaseModel):
+    password: str
 
     @field_validator("password")
     def password_not_empty(cls, v):

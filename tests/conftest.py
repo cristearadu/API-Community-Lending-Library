@@ -56,39 +56,39 @@ def registered_user(controller, valid_headers, generate_unique_user):
 def auth_user(controller, valid_headers, generate_unique_user):
     """
     Fixture that registers a user, logs in, and returns auth token.
-    In the future, will also handle cleanup.
+    Handles cleanup after tests.
     """
     user_data = generate_unique_user()
     register_response = controller.authentication_request_controller(
         key=AuthenticationEndpoints.REGISTER.switcher,
         headers=valid_headers,
         request_body=user_data,
-        role=user_data["role"],
     )
     assert register_response.status_code == status.HTTP_204_NO_CONTENT
 
     login_response = controller.authentication_request_controller(
         key=AuthenticationEndpoints.LOGIN.switcher,
         headers=valid_headers,
-        username=user_data["username"],
-        password=user_data["password"],
+        request_body={
+            "username": user_data["username"],
+            "password": user_data["password"],
+        },
     )
     assert login_response.status_code == status.HTTP_200_OK
     token = login_response.json()["access_token"]
 
     auth_headers = {**valid_headers, "Authorization": f"Bearer {token}"}
-
     auth_data = {"user": user_data, "token": token, "headers": auth_headers}
 
     yield auth_data
 
-    # Teardown (to be implemented)
-    # TODO: Implement user deletion
-    # try:
-    #     delete_response = controller.authentication_request_controller(
-    #         key=AuthenticationEndpoints.DELETE_USER.switcher,
-    #         headers=auth_headers
-    #     )
-    #     assert delete_response.status_code == status.HTTP_200_OK
-    # except Exception as e:
-    #     print(f"Error during user cleanup: {e}")
+    try:
+        delete_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_headers,
+            request_body={"password": user_data["password"]},
+        )
+    except Exception as e:
+        print(
+            f"Note: User cleanup failed (this is expected if user was deleted in test): {e}"
+        )

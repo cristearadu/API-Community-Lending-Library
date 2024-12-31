@@ -1,6 +1,3 @@
-import os
-
-
 class Settings:
     def __init__(self):
         self.SECRET_KEY = "your-super-secret-test-key"

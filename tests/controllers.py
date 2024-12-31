@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, auto
 from functools import partial
 import requests
 from typing import Optional, Dict, Any
@@ -10,6 +10,7 @@ class AuthenticationEndpoints(Enum):
     REGISTER = ("POST", "http://127.0.0.1:8000/register", "REGISTER USER")
     LOGIN = ("POST", "http://127.0.0.1:8000/login", "LOGIN USER")
     ME = ("GET", "http://127.0.0.1:8000/users/me", "GET CURRENT USER")
+    DELETE = ("DELETE", "http://127.0.0.1:8000/users/me", "DELETE CURRENT USER")
 
     def __init__(self, request_type: str, path: str, switcher: str):
         self.request_type = request_type
@@ -72,7 +73,7 @@ class AuthenticationController:
                 AuthenticationEndpoints.REGISTER.request_type,
                 AuthenticationEndpoints.REGISTER.path,
                 headers,
-                request_body,  # Use request_body directly
+                request_body,
                 None,
             ),
             AuthenticationEndpoints.LOGIN.switcher: partial(
@@ -80,10 +81,7 @@ class AuthenticationController:
                 AuthenticationEndpoints.LOGIN.request_type,
                 AuthenticationEndpoints.LOGIN.path,
                 headers,
-                {
-                    "username": kwargs.get("username"),
-                    "password": kwargs.get("password"),
-                },
+                request_body,
                 None,
             ),
             AuthenticationEndpoints.ME.switcher: partial(
@@ -92,6 +90,14 @@ class AuthenticationController:
                 AuthenticationEndpoints.ME.path,
                 headers,
                 None,
+                None,
+            ),
+            AuthenticationEndpoints.DELETE.switcher: partial(
+                http_request,
+                AuthenticationEndpoints.DELETE.request_type,
+                AuthenticationEndpoints.DELETE.path,
+                headers,
+                request_body,
                 None,
             ),
         }

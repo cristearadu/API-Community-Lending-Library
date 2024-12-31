@@ -33,7 +33,7 @@ class TestRegisterEndpoint:
     ):
         """Test registration fails with duplicate username."""
         user_data = generate_unique_user()
-        
+
         # First registration
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
@@ -137,7 +137,9 @@ class TestRegisterEndpoint:
                 request_body=user_data,
             )
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-            assert response.json()["detail"] == expected_error.value, f"Failed for {password}"
+            assert (
+                response.json()["detail"] == expected_error.value
+            ), f"Failed for {password}"
 
 
 class TestLoginEndpoint:
@@ -156,8 +158,10 @@ class TestLoginEndpoint:
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.LOGIN.switcher,
             headers=valid_headers,
-            username=auth_user["user"]["username"],
-            password=auth_user["user"]["password"],
+            request_body={
+                "username": auth_user["user"]["username"],
+                "password": auth_user["user"]["password"],
+            },
         )
         assert response.status_code == status.HTTP_200_OK
         token2 = response.json()["access_token"]
@@ -173,8 +177,7 @@ class TestLoginEndpoint:
     def test_login_success_with_protected_endpoint(self, controller, auth_user):
         """Test that a valid token can access protected endpoints"""
         me_response = controller.authentication_request_controller(
-            key=AuthenticationEndpoints.ME.switcher, 
-            headers=auth_user["headers"]
+            key=AuthenticationEndpoints.ME.switcher, headers=auth_user["headers"]
         )
         assert me_response.status_code == status.HTTP_200_OK
 
@@ -183,8 +186,10 @@ class TestLoginEndpoint:
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.LOGIN.switcher,
             headers=valid_headers,
-            username="",
-            password="anypassword",
+            request_body={
+                "username": "",
+                "password": "anypassword",
+            },
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.USERNAME_EMPTY.value
@@ -194,8 +199,10 @@ class TestLoginEndpoint:
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.LOGIN.switcher,
             headers=valid_headers,
-            username=registered_user["username"],
-            password="",
+            request_body={
+                "username": registered_user["username"],
+                "password": "",
+            },
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"] == ErrorDetail.PASSWORD_EMPTY.value
@@ -205,8 +212,10 @@ class TestLoginEndpoint:
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.LOGIN.switcher,
             headers=valid_headers,
-            username="nonexistent_user",
-            password="ValidPassword1!",
+            request_body={
+                "username": "nonexistent_user",
+                "password": "ValidPassword1!",
+            },
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.json()["detail"] == ErrorDetail.INVALID_CREDENTIALS.value
@@ -238,6 +247,83 @@ class TestLoginEndpoint:
             assert response.status_code == expected_status
             if expected_status == status.HTTP_401_UNAUTHORIZED:
                 assert response.json()["detail"] == ErrorDetail.TOKEN_INVALID.value
+
+
+class TestDeleteEndpoint:
+    def test_delete_user_success(self, controller, valid_headers, auth_user):
+        """Test successful user deletion with valid token and password."""
+        delete_data = {"password": auth_user["user"]["password"]}
+
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_user["headers"],
+            request_body=delete_data,
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not response.content
+
+    def test_delete_already_deleted_user(self, controller, valid_headers, auth_user):
+        """Test attempting to delete an already deleted user."""
+        # First deletion
+        delete_data = {"password": auth_user["user"]["password"]}
+
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_user["headers"],
+            request_body=delete_data,
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        # Try to delete again with same token
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_user["headers"],
+            request_body=delete_data,
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json()["detail"] == "User not found"
+
+    def test_delete_user_wrong_password(self, controller, valid_headers, auth_user):
+        """Test user deletion fails with wrong password."""
+        delete_data = {"password": "WrongPassword123!"}
+
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_user["headers"],
+            request_body=delete_data,
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "Invalid password" in response.text
+
+        # Test with empty password strings
+        empty_passwords = [
+            {"password": ""},
+            {"password": "   "},
+        ]
+
+        for data in empty_passwords:
+            response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.DELETE.switcher,
+                headers=auth_user["headers"],
+                request_body=data,
+            )
+
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert "Password cannot be empty" in response.text
+
+        # Test with missing password field
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.DELETE.switcher,
+            headers=auth_user["headers"],
+            request_body={},
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "field required" in response.text.lower()
 
 
 class TestRegistrationBoundaries:
@@ -354,8 +440,10 @@ class TestRegistrationBoundaries:
             login_response = controller.authentication_request_controller(
                 key=AuthenticationEndpoints.LOGIN.switcher,
                 headers=valid_headers,
-                username=test_data["username"],
-                password=test_data["password"],
+                request_body={
+                    "username": test_data["username"],
+                    "password": test_data["password"],
+                },
             )
 
             print(f"Login response status: {login_response.status_code}")
@@ -383,32 +471,40 @@ class TestRegistrationBoundaries:
 class TestRoleEndpoints:
     """Test cases for role-based functionality."""
 
-    def test_register_with_valid_roles(self, controller, valid_headers, generate_unique_user):
+    def test_register_with_valid_roles(
+        self, controller, valid_headers, generate_unique_user
+    ):
         """Test registration and login with valid role types (buyer and seller)."""
         valid_roles = ["buyer", "seller"]
-        
+
         for role in valid_roles:
             user_data = generate_unique_user()
             user_data["role"] = role
-            
+
             # Test registration
             register_response = controller.authentication_request_controller(
                 key=AuthenticationEndpoints.REGISTER.switcher,
                 headers=valid_headers,
                 request_body=user_data,
             )
-            
-            assert register_response.status_code == status.HTTP_204_NO_CONTENT, f"Failed to register user with role: {role}"
+
+            assert (
+                register_response.status_code == status.HTTP_204_NO_CONTENT
+            ), f"Failed to register user with role: {role}"
 
             # Test login
             login_response = controller.authentication_request_controller(
                 key=AuthenticationEndpoints.LOGIN.switcher,
                 headers=valid_headers,
-                username=user_data["username"],
-                password=user_data["password"],
+                request_body={
+                    "username": user_data["username"],
+                    "password": user_data["password"],
+                },
             )
-            
-            assert login_response.status_code == status.HTTP_200_OK, f"Failed to login user with role: {role}"
+
+            assert (
+                login_response.status_code == status.HTTP_200_OK
+            ), f"Failed to login user with role: {role}"
             assert "access_token" in login_response.json()
 
             # Test /me endpoint to verify role
@@ -418,46 +514,55 @@ class TestRoleEndpoints:
                 key=AuthenticationEndpoints.ME.switcher,
                 headers=me_headers,
             )
-            
+
             assert me_response.status_code == status.HTTP_200_OK
             assert me_response.json()["role"] == role
 
-    def test_register_with_admin_role_fails(self, controller, valid_headers, generate_unique_user):
+    def test_register_with_admin_role_fails(
+        self, controller, valid_headers, generate_unique_user
+    ):
         """Test registration and login fails when trying to create an admin account."""
         user_data = generate_unique_user()
         user_data["role"] = "admin"
-        
+
         # Test registration fails
         register_response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
             request_body=user_data,
         )
-        
+
         assert register_response.status_code == status.HTTP_403_FORBIDDEN
-        assert register_response.json()["detail"] == ErrorDetail.ADMIN_REGISTRATION_FORBIDDEN.value
+        assert (
+            register_response.json()["detail"]
+            == ErrorDetail.ADMIN_REGISTRATION_FORBIDDEN.value
+        )
 
         # Try to login (should fail as registration failed)
         login_response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.LOGIN.switcher,
             headers=valid_headers,
-            username=user_data["username"],
-            password=user_data["password"],
+            request_body={
+                "username": user_data["username"],
+                "password": user_data["password"],
+            },
         )
-        
+
         assert login_response.status_code == status.HTTP_401_UNAUTHORIZED
         assert login_response.json()["detail"] == ErrorDetail.INVALID_CREDENTIALS.value
 
-    def test_register_with_invalid_role(self, controller, valid_headers, generate_unique_user):
+    def test_register_with_invalid_role(
+        self, controller, valid_headers, generate_unique_user
+    ):
         """Test registration fails with invalid role."""
         user_data = generate_unique_user()
         user_data["role"] = "invalid_role"
-        
+
         response = controller.authentication_request_controller(
             key=AuthenticationEndpoints.REGISTER.switcher,
             headers=valid_headers,
             request_body=user_data,
         )
-        
+
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.json()["detail"] == ErrorDetail.INVALID_ROLE.value
+        assert response.json()["detail"] == "Invalid role"
