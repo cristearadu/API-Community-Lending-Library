@@ -1,10 +1,15 @@
+version: '3.8'
+
 services:
-  api:
-    container_name: api-test
+  web:
     build: .
     ports:
       - "8000:8000"
-    volumes:
-      - ./database:/app/database
     environment:
-      - PYTHONPATH=/app 
+      - DATABASE_URL=sqlite:///./marketplace.db
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=Admin123!
+      - ADMIN_EMAIL=admin@example.com
+    volumes:
+      - ./uploads:/app/uploads
+      - ./marketplace.db:/app/marketplace.db 

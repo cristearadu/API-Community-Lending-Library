@@ -3,11 +3,8 @@ from uuid import UUID
 from pydantic import (
     BaseModel,
     Field,
-    SecretStr,
-    EmailStr,
     field_validator,
-    model_validator,
-    ValidationError,
+    model_validator
 )
 from models.user import User
 from models.roles import UserRole

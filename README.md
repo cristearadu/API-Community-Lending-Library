@@ -4,61 +4,98 @@ A RESTful API for managing a community lending library system.
 
 ## Prerequisites
 
-- Python 3.10 or higher
-- Docker Desktop
-- Git
+- **Docker Desktop**
+- **Git**
 
 ## Installation & Setup
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/API-Community-Lending-Library.git
-   cd API-Community-Lending-Library
-   ```
+### 1. Clone the Repository
 
-2. **Create Virtual Environment**
-   ```bash
-   python -m venv .venv
-   
-   # For Windows
-   .\.venv\Scripts\activate
-   
-   # For macOS/Linux
-   source .venv/bin/activate
-   ```
+```bash
+git clone https://github.com/yourusername/API-Community-Lending-Library.git
+cd API-Community-Lending-Library
+```
 
-3. **Install Dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Start Docker Desktop
 
-## Running the API
+- Ensure Docker Desktop is running on your machine.
+- [Download Docker Desktop](https://www.docker.com/products/docker-desktop/) if it is not installed.
 
-1. **Start Docker Desktop**
-   - Make sure Docker Desktop is running on your machine
-   - You can download it from [Docker's official website](https://www.docker.com/products/docker-desktop/) if not installed
+### 3. Run Setup
 
-2. **Start the API and Run Tests**
-   ```bash
-   python setup.py
-   ```
-   This will:
-   - Start the API in a Docker container
-   - Check if the API is healthy
-   - Run all tests
-   - Keep the container running if tests pass
+Choose the appropriate method based on your operating system:
 
-3. **Access the API**
-   - API Documentation: http://localhost:8000/docs
-   - Alternative Documentation: http://localhost:8000/redoc
+#### Unix/MacOS
+```bash
+./setup.sh
+```
 
-## Testing
+#### Windows (PowerShell)
+```powershell
+.\setup.ps1
+```
 
-The API will be running at `http://localhost:8000`. You can:
-- Use the Swagger UI for manual testing
-- Write automated tests using your preferred testing framework
-- Use tools like Postman or curl for API requests
+#### Windows (Command Prompt)
+```batch
+setup.bat
+```
 
-## Stopping the API
+The setup script will:
+- Build the Docker containers.
+- Start the application.
+- Run all tests.
+- Show live logs (press `Ctrl+C` to exit logs).
 
-When you're done testing, stop the Docker container:
+## Accessing the API
+
+Once running, you can access:
+
+- **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Alternative Documentation:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+## Default Admin Credentials
+
+- **Username:** `admin`
+- **Password:** `Admin123!`
+- **Email:** `admin@example.com`
+
+## Manual Docker Commands
+
+If needed, you can manage Docker manually using the following commands:
+
+### Build Containers
+```bash
+docker compose build
+```
+
+### Start Containers
+```bash
+docker compose up -d
+```
+
+### View Logs
+```bash
+docker compose logs -f
+```
+
+### Stop Containers
+```bash
+docker compose down
+```
+
+## Project Structure
+
+```
+├── alembic/              # Database migrations
+├── models/               # SQLAlchemy models
+├── routers/              # API routes
+├── schemas/              # Pydantic models
+├── services/             # Business logic
+├── tests/                # Test files
+├── uploads/              # File uploads directory
+├── docker-compose.yml    # Docker configuration
+├── Dockerfile            # Docker build instructions
+└── requirements.txt      # Python dependencies
+```
+
+---

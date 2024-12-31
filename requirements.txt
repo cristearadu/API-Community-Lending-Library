@@ -1,12 +1,12 @@
 # Core dependencies
-fastapi>=0.68.0,<0.69.0
-uvicorn>=0.15.0,<0.16.0
-python-jose[cryptography]>=3.3.0,<4.0.0
-passlib[bcrypt]>=1.7.4,<2.0.0
+fastapi>=0.100.0
+uvicorn>=0.15.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1
-python-multipart>=0.0.5,<0.0.6
-pydantic>=2.0.0,<3.0.0
-sqlalchemy>=1.4.0,<2.0.0
+python-multipart>=0.0.5
+pydantic>=2.0.0
+sqlalchemy>=1.4.0
 alembic>=1.7.1
 psycopg2-binary>=2.9.1
 
@@ -18,3 +18,4 @@ pytest-asyncio>=0.15.1
 
 # Development tools
 black>=23.12.1  # Code formatting
+requests>=2.31.0
