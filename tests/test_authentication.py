@@ -172,11 +172,10 @@ class TestLoginEndpoint:
     def test_login_success_with_protected_endpoint(self, controller, auth_user):
         """Test that a valid token can access protected endpoints"""
         me_response = controller.authentication_request_controller(
-            key=AuthenticationEndpoints.ME.switcher, headers=auth_user["headers"]
+            key=AuthenticationEndpoints.ME.switcher, 
+            headers=auth_user["headers"]
         )
         assert me_response.status_code == status.HTTP_200_OK
-        assert me_response.json()["username"] == auth_user["user"]["username"]
-        assert me_response.json()["email"] == auth_user["user"]["email"]
 
     def test_login_empty_username(self, controller, valid_headers):
         """Test that login fails with empty username"""

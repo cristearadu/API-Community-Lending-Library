@@ -51,27 +51,24 @@ def decode_token(token: str) -> dict:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-
-        if payload.get("exp") and datetime.utcfromtimestamp(payload["exp"]) < datetime.utcnow():
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired"
-            )
-
+            
         return payload
-
-    except JWTError:
+        
+    except JWTError as e:
+        print(f"JWT Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
         )
 
-
-
 # JWT Configuration
-SECRET_KEY = "your-secret-key-here"  # Change this in production!
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -102,9 +99,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
 
@@ -115,14 +112,15 @@ async def get_current_user(
     """Get current user from token."""
     try:
         payload = decode_token(credentials.credentials)
-        user_id = payload.get("sub")
-        if user_id is None:
+        username = payload.get("sub")
+        if username is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                detail="Invalid token; no username found"
             )
 
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(User.username == username).first()
+        
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,12 +129,7 @@ async def get_current_user(
 
         return user
 
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
-    except Exception:
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials"
@@ -151,6 +144,7 @@ async def check_seller_role(current_user: User = Depends(get_current_user)):
             detail="Only sellers can access this endpoint"
         )
     return current_user
+
 
 async def check_admin_role(current_user: User = Depends(get_current_user)):
     """Check if current user has admin role."""

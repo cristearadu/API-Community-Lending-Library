@@ -1,8 +1,11 @@
 import pytest
+import os
 from fastapi import status
 from tests.utils.string_generators import generate_random_string
 from tests.constants import UserRole
 from tests.controllers import AuthenticationController, AuthenticationEndpoints
+
+os.environ["SECRET_KEY"] = "your-secret-key"  # Must match the default in config.py
 
 
 @pytest.fixture
