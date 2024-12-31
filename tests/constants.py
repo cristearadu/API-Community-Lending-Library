@@ -11,6 +11,7 @@ class StatusCode(Enum):
 
 
 class ErrorDetail(Enum):
+    ADMIN_REGISTRATION_FORBIDDEN = "Cannot register as admin"
     USERNAME_ALREADY_EXISTS = "Username already registered"
     EMAIL_ALREADY_EXISTS = "Email already registered"
     USERNAME_TOO_SHORT = "Username must be between 3 and 30 characters"
@@ -22,6 +23,7 @@ class ErrorDetail(Enum):
         "Username can only contain letters, numbers, and underscores"
     )
     EMAIL_INVALID_FORMAT = "Invalid email address"
+    FIELD_REQUIRED = "field required"
     PASSWORD_TOO_SHORT = "Password must be at least 8 characters long"
     PASSWORD_MISSING_UPPERCASE = "Password must contain at least one uppercase letter"
     PASSWORD_MISSING_LOWERCASE = "Password must contain at least one lowercase letter"
@@ -30,10 +32,11 @@ class ErrorDetail(Enum):
     USERNAME_EMPTY = "Username cannot be empty"
     PASSWORD_EMPTY = "Password cannot be empty"
     INVALID_CREDENTIALS = "Incorrect username or password"
+    INVALID_PASSWORD = "Invalid password"
+    INVALID_ROLE = "Invalid role"
     TOKEN_EXPIRED = "Could not validate credentials"
     TOKEN_INVALID = "Could not validate credentials"
-    ADMIN_REGISTRATION_FORBIDDEN = "Cannot register as admin"
-    INVALID_ROLE = "Invalid role"
+    USER_NOT_FOUND = "User not found"
 
 
 # Test Data

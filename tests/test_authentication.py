@@ -49,7 +49,7 @@ class TestRegisterEndpoint:
             request_body=user_data,
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Username already registered" in response.text
+        assert response.json()["detail"] == ErrorDetail.USERNAME_ALREADY_EXISTS.value
 
     def test_register_duplicate_email(self, controller, valid_headers, registered_user):
         """Test registration fails with duplicate email."""
@@ -284,7 +284,7 @@ class TestDeleteEndpoint:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.json()["detail"] == "User not found"
+        assert response.json()["detail"] == ErrorDetail.USER_NOT_FOUND.value
 
     def test_delete_user_wrong_password(self, controller, valid_headers, auth_user):
         """Test user deletion fails with wrong password."""
@@ -297,7 +297,7 @@ class TestDeleteEndpoint:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "Invalid password" in response.text
+        assert response.json()["detail"] == ErrorDetail.INVALID_PASSWORD.value
 
         # Test with empty password strings
         empty_passwords = [
@@ -313,7 +313,7 @@ class TestDeleteEndpoint:
             )
 
             assert response.status_code == status.HTTP_400_BAD_REQUEST
-            assert "Password cannot be empty" in response.text
+            assert response.json()["detail"] == ErrorDetail.PASSWORD_EMPTY.value
 
         # Test with missing password field
         response = controller.authentication_request_controller(
@@ -323,7 +323,7 @@ class TestDeleteEndpoint:
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "field required" in response.text.lower()
+        assert ErrorDetail.FIELD_REQUIRED.value in response.text.lower()
 
 
 class TestRegistrationBoundaries:
