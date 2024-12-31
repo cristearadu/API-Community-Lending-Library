@@ -9,6 +9,7 @@ from pydantic import (
 from models.user import User
 from models.roles import UserRole
 from fastapi import HTTPException, status
+from enum import Enum
 
 
 class Token(BaseModel):
@@ -16,11 +17,17 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class UserRole(str, Enum):
+    BUYER = "buyer"
+    SELLER = "seller"
+    ADMIN = "admin"
+
+
 class UserCreate(BaseModel):
     username: str = Field(example="john_doe")
     email: str = Field(example="john_doe@example.com")
     password: str = Field(xample="SecurePass1!")
-    role: UserRole = Field(example="buyer")
+    role: str = UserRole.BUYER.value  # Default to BUYER if not specified
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -129,6 +136,18 @@ class UserCreate(BaseModel):
                 detail="Email already registered",
             )
         return data
+
+    @field_validator('role')
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        try:
+            role = UserRole(value.lower())
+            return role.value
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid role"
+            )
 
 
 class UserResponse(BaseModel):

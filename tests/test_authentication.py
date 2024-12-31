@@ -1,3 +1,4 @@
+import pytest
 import time
 from tests.constants import (
     ErrorDetail,
@@ -377,3 +378,86 @@ class TestRegistrationBoundaries:
 
             assert me_response.status_code == status.HTTP_200_OK
             assert me_response.json()["username"] == test_data["username"]
+
+
+class TestRoleEndpoints:
+    """Test cases for role-based functionality."""
+
+    def test_register_with_valid_roles(self, controller, valid_headers, generate_unique_user):
+        """Test registration and login with valid role types (buyer and seller)."""
+        valid_roles = ["buyer", "seller"]
+        
+        for role in valid_roles:
+            user_data = generate_unique_user()
+            user_data["role"] = role
+            
+            # Test registration
+            register_response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.REGISTER.switcher,
+                headers=valid_headers,
+                request_body=user_data,
+            )
+            
+            assert register_response.status_code == status.HTTP_204_NO_CONTENT, f"Failed to register user with role: {role}"
+
+            # Test login
+            login_response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.LOGIN.switcher,
+                headers=valid_headers,
+                username=user_data["username"],
+                password=user_data["password"],
+            )
+            
+            assert login_response.status_code == status.HTTP_200_OK, f"Failed to login user with role: {role}"
+            assert "access_token" in login_response.json()
+
+            # Test /me endpoint to verify role
+            token = login_response.json()["access_token"]
+            me_headers = {**valid_headers, "Authorization": f"Bearer {token}"}
+            me_response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.ME.switcher,
+                headers=me_headers,
+            )
+            
+            assert me_response.status_code == status.HTTP_200_OK
+            assert me_response.json()["role"] == role
+
+    def test_register_with_admin_role_fails(self, controller, valid_headers, generate_unique_user):
+        """Test registration and login fails when trying to create an admin account."""
+        user_data = generate_unique_user()
+        user_data["role"] = "admin"
+        
+        # Test registration fails
+        register_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data,
+        )
+        
+        assert register_response.status_code == status.HTTP_403_FORBIDDEN
+        assert register_response.json()["detail"] == ErrorDetail.ADMIN_REGISTRATION_FORBIDDEN.value
+
+        # Try to login (should fail as registration failed)
+        login_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            username=user_data["username"],
+            password=user_data["password"],
+        )
+        
+        assert login_response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert login_response.json()["detail"] == ErrorDetail.INVALID_CREDENTIALS.value
+
+    def test_register_with_invalid_role(self, controller, valid_headers, generate_unique_user):
+        """Test registration fails with invalid role."""
+        user_data = generate_unique_user()
+        user_data["role"] = "invalid_role"
+        
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data,
+        )
+        
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json()["detail"] == ErrorDetail.INVALID_ROLE.value
