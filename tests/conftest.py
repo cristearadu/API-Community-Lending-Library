@@ -2,7 +2,7 @@ import pytest
 import os
 from fastapi import status
 from tests.utils.string_generators import generate_random_string
-from tests.constants import UserRole
+from tests.constants import UserRole, TestData
 from tests.controllers import AuthenticationController, AuthenticationEndpoints
 
 os.environ["SECRET_KEY"] = "your-secret-key"  # Must match the default in config.py
@@ -32,7 +32,7 @@ def generate_unique_user():
         return {
             "username": f"{prefix}_{unique_suffix}",
             "email": f"{prefix}_{unique_suffix}@example.com",
-            "password": f"ValidP@ss1",
+            "password": TestData.VALID_PASSWORD.value,
             "role": role,
         }
 
