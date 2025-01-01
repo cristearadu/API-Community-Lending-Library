@@ -19,9 +19,9 @@ def custom_openapi():
         return app.openapi_schema
 
     openapi_schema = get_openapi(
-        title="Community Lending Library API",
+        title="API QA Sandbox - MarketPlace",
         version="1.0.0",
-        description="API for Community Lending Library",
+        description="MarketPlace API app for Testing purposes",
         routes=app.routes,
     )
 
