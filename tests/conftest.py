@@ -23,7 +23,7 @@ def valid_headers():
     }
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def generate_unique_user():
     """Fixture to generate a unique user with random data."""
 

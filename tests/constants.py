@@ -37,6 +37,7 @@ class ErrorDetail(Enum):
     TOKEN_EXPIRED = "Could not validate credentials"
     TOKEN_INVALID = "Could not validate credentials"
     USER_NOT_FOUND = "User not found"
+    USERNAME_CAN_ONLY_CONTAIN = "Username can only contain letters, numbers, and underscores"
 
 
 # Test Data

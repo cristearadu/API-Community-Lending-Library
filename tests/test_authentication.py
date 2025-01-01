@@ -4,6 +4,7 @@ from tests.constants import (
     ErrorDetail,
     SPECIAL_CHARACTERS,
     INVALID_EMAIL_FORMATS,
+    UserRole
 )
 from tests.controllers import AuthenticationEndpoints
 from tests.utils.string_generators import (
@@ -140,6 +141,154 @@ class TestRegisterEndpoint:
             assert (
                 response.json()["detail"] == expected_error.value
             ), f"Failed for {password}"
+
+    def test_password_complexity(self, controller, valid_headers, generate_unique_user):
+        """Test password complexity requirements."""
+        user_data = generate_unique_user()
+        invalid_passwords = [
+            "short",           # Too short
+            "nouppercase123",  # No uppercase
+            "NOLOWERCASE123",  # No lowercase
+            "NoSpecial123",    # No special characters
+            "No@Numbers",      # No numbers
+            "Ab@1",           # Too short but with all requirements
+        ]
+        
+        for invalid_pass in invalid_passwords:
+            user_data["password"] = invalid_pass
+            response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.REGISTER.switcher,
+                headers=valid_headers,
+                request_body=user_data,
+            )
+            
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert "Password must" in response.text  # Generic check for password requirements message
+
+    def test_email_validation(self, controller, valid_headers, generate_unique_user):
+        """Test email validations."""
+        user_data = generate_unique_user()
+        
+        user_data["email"] = f"{'a' * 246}@example.com"  # Creates email > 256 chars
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data,
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "Email local part cannot exceed 64 characters" in response.text
+
+    def test_username_special_cases(self, controller, valid_headers, generate_unique_user):
+        """Test special username cases."""
+        invalid_usernames = [
+            " " * 10,                  # Only spaces
+            " leading_space",          # Leading space
+            "trailing_space ",         # Trailing space
+            "space in middle",         # Space in middle
+            "special@character",       # Special characters
+            "hyphen-name",             # Hyphens
+            "dot.name",                # Dots
+        ]
+        
+        for invalid_username in invalid_usernames:
+            user_data = generate_unique_user()
+            user_data["username"] = invalid_username
+            response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.REGISTER.switcher,
+                headers=valid_headers,
+                request_body=user_data,
+            )
+
+            assert response.status_code == status.HTTP_400_BAD_REQUEST, \
+                f"Failed with {response.status_code} for username: '{invalid_username}'"
+            
+            error_detail = response.json()["detail"]
+            assert error_detail == ErrorDetail.USERNAME_CAN_ONLY_CONTAIN.value, \
+                (f"Expected '{ErrorDetail.USERNAME_CAN_ONLY_CONTAIN.value}' but got '{error_detail}' "
+                 f"for username: '{invalid_username}'")
+
+    def test_valid_username_formats(self, controller, valid_headers, generate_unique_user):
+        """Test valid username formats."""
+        unique_suffix = generate_random_string(4)
+        
+        valid_username_patterns = [
+            f"usr{unique_suffix}",        # Letters and numbers
+            f"123{unique_suffix}",        # Numbers at start
+            f"usr_{unique_suffix}",       # With underscore
+            f"ABC{unique_suffix}",        # Uppercase
+            f"low{unique_suffix}",        # Lowercase
+        ]
+        
+        for valid_username in valid_username_patterns:
+            user_data = generate_unique_user()
+            user_data["username"] = valid_username
+            response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.REGISTER.switcher,
+                headers=valid_headers,
+                request_body=user_data,
+            )
+
+            assert response.status_code == status.HTTP_204_NO_CONTENT, \
+                f"Failed to register with valid username: '{valid_username}'. Error: {response.text}"
+            
+            # Verify the length is within bounds
+            assert 3 <= len(valid_username) <= 30, \
+                f"Username '{valid_username}' length ({len(valid_username)}) is outside allowed range (3-30)"
+
+    def test_default_role(self, controller, valid_headers, generate_unique_user):
+        """Test default role when not specified."""
+        user_data = generate_unique_user()
+        del user_data["role"]
+        
+        response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.REGISTER.switcher,
+            headers=valid_headers,
+            request_body=user_data,
+        )
+        
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+        # Login to verify default role
+        login_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.LOGIN.switcher,
+            headers=valid_headers,
+            request_body={
+                "username": user_data["username"],
+                "password": user_data["password"],
+            }
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+
+        token = login_response.json()["access_token"]
+        me_headers = {**valid_headers, "Authorization": f"Bearer {token}"}
+        me_response = controller.authentication_request_controller(
+            key=AuthenticationEndpoints.ME.switcher,
+            headers=me_headers,
+        )
+        
+        assert me_response.status_code == status.HTTP_200_OK
+        assert me_response.json()["role"] == UserRole.BUYER
+
+    def test_role_case_sensitivity(self, controller, valid_headers, generate_unique_user):
+        """Test role case sensitivity."""
+        role_variations = [
+            "BUYER",
+            "Buyer",
+            "buyer",
+            "SELLER",
+            "Seller",
+            "seller",
+        ]
+        
+        for role in role_variations:
+            user_data = generate_unique_user()
+            user_data["role"] = role
+            response = controller.authentication_request_controller(
+                key=AuthenticationEndpoints.REGISTER.switcher,
+                headers=valid_headers,
+                request_body=user_data,
+            )
+            assert response.status_code == status.HTTP_204_NO_CONTENT
 
 
 class TestLoginEndpoint:
