@@ -4,11 +4,13 @@ from fastapi.responses import JSONResponse
 from database import Base, engine
 from routers import auth
 from routes import categories, listings, cart, reviews, orders
+from logging_config import log_request_middleware
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+app.middleware("http")(log_request_middleware)
 
 
 @app.exception_handler(RequestValidationError)
