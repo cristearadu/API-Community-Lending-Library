@@ -5,12 +5,37 @@ from database import Base, engine
 from routers import auth
 from routes import categories, listings, cart, reviews, orders
 from logging_config import log_request_middleware
+from fastapi.openapi.utils import get_openapi
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 app.middleware("http")(log_request_middleware)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="Community Lending Library API",
+        version="1.0.0",
+        description="API for Community Lending Library",
+        routes=app.routes,
+    )
+
+    # Remove 422 responses from all endpoints
+    for path in openapi_schema["paths"].values():
+        for operation in path.values():
+            if "responses" in operation:
+                operation["responses"].pop("422", None)
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 @app.exception_handler(RequestValidationError)

@@ -1,12 +1,8 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 
 from database import get_db
 from schemas.user import UserCreate, UserResponse, LoginUser, Token, UserDelete
@@ -27,7 +23,50 @@ from config import settings
 router = APIRouter()
 
 
-@router.post("/register", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/register",
+    response_model=None,
+    status_code=204,
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+    responses={
+        204: {"description": "User successfully registered"},
+        400: {
+            "description": "Validation Error",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "username_exists": {
+                            "value": {"detail": "Username already registered"}
+                        },
+                        "email_exists": {
+                            "value": {"detail": "Email already registered"}
+                        },
+                        "invalid_username": {
+                            "value": {
+                                "detail": "Username must be between 3 and 32 characters"
+                            }
+                        },
+                        "invalid_email": {"value": {"detail": "Invalid email format"}},
+                        "invalid_password": {
+                            "value": {
+                                "detail": "Password must be at least 8 characters long"
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        403: {
+            "description": "Forbidden",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Admin registration is not allowed"}
+                }
+            },
+        },
+    },
+)
 async def register(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     """Register a new user."""
     # Check if username exists
@@ -71,7 +110,48 @@ async def register(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+    responses={
+        200: {
+            "description": "Successful Login",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Bad Request",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "empty_username": {
+                            "value": {"detail": "Field 'username' cannot be empty"}
+                        },
+                        "empty_password": {
+                            "value": {"detail": "Field 'password' cannot be empty"}
+                        },
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Invalid credentials",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Incorrect username or password"}
+                }
+            },
+        },
+    },
+)
 async def login(
     form_data: LoginUser,
     db: Annotated[Session, Depends(get_db)],
@@ -91,13 +171,77 @@ async def login(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/users/me", response_model=UserResponse)
+@router.get(
+    "/users/me",
+    response_model=UserResponse,
+    responses={
+        200: {
+            "description": "Return current user details",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "username": "string",
+                        "email": "string",
+                        "role": "buyer",
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Not authenticated",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "not_authenticated": {"value": {"detail": "Not authenticated"}},
+                        "invalid_token": {
+                            "value": {"detail": "Could not validate credentials"}
+                        },
+                        "expired_token": {"value": {"detail": "Token has expired"}},
+                    }
+                }
+            },
+        },
+    },
+)
 async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
     """Get current user information."""
     return current_user
 
 
-@router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/users/me",
+    response_model=None,
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+    responses={
+        204: {"description": "User successfully deleted"},
+        400: {
+            "description": "Bad Request",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Field 'password' cannot be empty"}
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "invalid_password": {"value": {"detail": "Invalid password"}},
+                        "not_authenticated": {"value": {"detail": "Not authenticated"}},
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Not Found",
+            "content": {"application/json": {"example": {"detail": "User not found"}}},
+        },
+    },
+)
 async def delete_user(
     password_data: UserDelete,
     token: str = Depends(oauth2_scheme),
