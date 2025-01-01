@@ -35,8 +35,8 @@ class UserCreate(BaseModel):
                 detail="Username must be between 3 and 30 characters",
             )
 
-        # Only alphanumeric characters and underscores
-        if not re.match(r"^\w+$", username):  # \w matches [a-zA-Z0-9_]
+        # Allow letters from any language, numbers, and underscores
+        if not re.match(r"^[\w\u0080-\uffff]+$", username):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username can only contain letters, numbers, and underscores",
@@ -162,35 +162,16 @@ class UserResponse(BaseModel):
 
 
 class LoginUser(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., description="Username for login")
+    password: str = Field(..., description="Password for login")
 
-    @field_validator("username")
-    def username_exists(cls, v):
-        if not v or len(v.strip()) == 0:
+    @field_validator("username", "password")
+    @classmethod
+    def validate_not_empty(cls, v: str, info) -> str:
+        if not v or not v.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username cannot be empty",
-            )
-
-        db = getattr(cls, "db", None)
-        if not db:
-            return v
-
-        user = db.query(User).filter(User.username == v).first()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-            )
-        return v
-
-    @field_validator("password")
-    def password_not_empty(cls, v):
-        if not v or len(v.strip()) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password cannot be empty",
+                detail=f"Field '{info.field_name}' cannot be empty",
             )
         return v
 
